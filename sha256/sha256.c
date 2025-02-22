@@ -1,27 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #include "sha256.h"
 
 #define BLOCK_SIZE 64
 #define SCHEDULE_SIZE 64
-
-#ifdef DEBUG
-void print_block(const u_int8_t block[BLOCK_SIZE]) {
-    for (u_int8_t i = 0; i < BLOCK_SIZE; i += 4) {
-        printf("%02x-%02x: %08b %08b %08b %08b\n", i, i + 3, block[i], block[i + 1], block[i + 2],
-               block[i + 3]);
-    }
-}
-#endif
-
-#ifdef DEBUG
-void print_32_int_array(u_int8_t size, const u_int32_t arr[size]) {
-    for (u_int8_t i = 0; i < size; i++) {
-        printf("%3d: %032b\n", i, arr[i]);
-    }
-}
-#endif
 
 u_int32_t ror(u_int32_t x, u_int32_t n) {
     return (x >> n) | (x << (32 - n));
@@ -63,39 +47,48 @@ const u_int32_t k[64] = {
     0b10111110111110011010001111110111, 0b11000110011100010111100011110010,
 };
 
-void sha256_hash() {
-    const int NB_BLOCKS = 1;
-    u_int8_t blocks[NB_BLOCKS][BLOCK_SIZE];
-    for (u_int8_t i = 0; i < NB_BLOCKS; i++) {
-        for (u_int8_t j = 0; j < BLOCK_SIZE; j++) {
-            blocks[i][j] = 0;
-        }
+u_int32_t *sha256_hash(u_int64_t size, u_int8_t *input) {
+    // FIXME: when the size of the input data is really close to the max value for 64-bit integers
+    u_int64_t nb_blocks = (size + 8) / 64 + 1;
+
+    u_int8_t *blocks = calloc(nb_blocks * BLOCK_SIZE, sizeof(u_int8_t));
+    if (blocks == NULL) {
+        return NULL;
     }
+    for (u_int64_t i = 0; i < size; i++) {
+        blocks[i] = input[i];
+    }
+    blocks[size] = 0x80;
+    blocks[nb_blocks * BLOCK_SIZE - 1] = 8 * (size >> (0 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 2] = 8 * (size >> (1 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 3] = 8 * (size >> (2 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 4] = 8 * (size >> (3 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 5] = 8 * (size >> (4 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 6] = 8 * (size >> (5 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 7] = 8 * (size >> (6 * 8));
+    blocks[nb_blocks * BLOCK_SIZE - 8] = 8 * (size >> (7 * 8));
 
-    blocks[0][0] = 0x66;
-    blocks[0][1] = 0x6f;
-    blocks[0][2] = 0x6f;
-
-    blocks[0][3] = 0x80;
-
-    blocks[0][63] = 24;
-
+    u_int32_t *hash = malloc(8 * sizeof(u_int32_t));
+    if (hash == NULL) {
+        return NULL;
+    }
     // first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
-    u_int32_t h0 = 0b01101010000010011110011001100111;
-    u_int32_t h1 = 0b10111011011001111010111010000101;
-    u_int32_t h2 = 0b00111100011011101111001101110010;
-    u_int32_t h3 = 0b10100101010011111111010100111010;
-    u_int32_t h4 = 0b01010001000011100101001001111111;
-    u_int32_t h5 = 0b10011011000001010110100010001100;
-    u_int32_t h6 = 0b00011111100000111101100110101011;
-    u_int32_t h7 = 0b01011011111000001100110100011001;
+    hash[0] = 0b01101010000010011110011001100111;
+    hash[1] = 0b10111011011001111010111010000101;
+    hash[2] = 0b00111100011011101111001101110010;
+    hash[3] = 0b10100101010011111111010100111010;
+    hash[4] = 0b01010001000011100101001001111111;
+    hash[5] = 0b10011011000001010110100010001100;
+    hash[6] = 0b00011111100000111101100110101011;
+    hash[7] = 0b01011011111000001100110100011001;
 
     u_int32_t w[SCHEDULE_SIZE] = {0};
 
-    for (int i = 0; i < NB_BLOCKS; i++) {
+    for (u_int64_t i = 0; i < nb_blocks; i++) {
         for (u_int8_t j = 0; j < 16; j++) {
-            w[j] = blocks[i][4 * j] << 24 | blocks[i][4 * j + 1] << 16 | blocks[i][4 * j + 2] << 8 |
-                   blocks[i][4 * j + 3] << 0;
+            u_int64_t offset = i * 64 + 4 * j;
+            w[j] = blocks[offset] << 24 | blocks[offset + 1] << 16 | blocks[offset + 2] << 8 |
+                   blocks[offset + 3] << 0;
         }
 
         for (u_int8_t j = 16; j < SCHEDULE_SIZE; j++) {
@@ -106,9 +99,10 @@ void sha256_hash() {
             w[j] = w[j - 16] + s0 + w[j - 7] + s1;
         }
 
-        u_int32_t a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+        u_int32_t a = hash[0], b = hash[1], c = hash[2], d = hash[3], e = hash[4], f = hash[5],
+                  g = hash[6], h = hash[7];
 
-        for (int j = 1; j < 65; j++) {
+        for (u_int8_t j = 1; j < 65; j++) {
             u_int32_t s1 = ror(e, 6) ^ ror(e, 11) ^ ror(e, 25);
             u_int32_t choice = (e & f) ^ (~e & g);
             u_int32_t s0 = ror(a, 2) ^ ror(a, 13) ^ ror(a, 22);
@@ -127,15 +121,17 @@ void sha256_hash() {
             a = tmp_1 + tmp_2;
         }
 
-        h0 = h0 + a;
-        h1 = h1 + b;
-        h2 = h2 + c;
-        h3 = h3 + d;
-        h4 = h4 + e;
-        h5 = h5 + f;
-        h6 = h6 + g;
-        h7 = h7 + h;
+        hash[0] += a;
+        hash[1] += b;
+        hash[2] += c;
+        hash[3] += d;
+        hash[4] += e;
+        hash[5] += f;
+        hash[6] += g;
+        hash[7] += h;
     }
 
-    printf("%08x%08x%08x%08x%08x%08x%08x%08x\n", h0, h1, h2, h3, h4, h5, h6, h7);
+    free(blocks);
+
+    return hash;
 }
