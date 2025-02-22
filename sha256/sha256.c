@@ -47,7 +47,7 @@ const u_int32_t k[64] = {
     0b10111110111110011010001111110111, 0b11000110011100010111100011110010,
 };
 
-u_int32_t *sha256_hash(u_int64_t size, u_int8_t *input) {
+u_int32_t *sha256_hash(u_int64_t size, const u_int8_t *input) {
     // FIXME: when the size of the input data is really close to the max value for 64-bit integers
     u_int64_t nb_blocks = (size + 8) / BLOCK_SIZE + 1;
 
