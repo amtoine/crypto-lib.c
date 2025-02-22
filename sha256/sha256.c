@@ -49,7 +49,7 @@ const u_int32_t k[64] = {
 
 u_int32_t *sha256_hash(u_int64_t size, u_int8_t *input) {
     // FIXME: when the size of the input data is really close to the max value for 64-bit integers
-    u_int64_t nb_blocks = (size + 8) / 64 + 1;
+    u_int64_t nb_blocks = (size + 8) / BLOCK_SIZE + 1;
 
     u_int8_t *blocks = calloc(nb_blocks * BLOCK_SIZE, sizeof(u_int8_t));
     if (blocks == NULL) {
@@ -59,14 +59,9 @@ u_int32_t *sha256_hash(u_int64_t size, u_int8_t *input) {
         blocks[i] = input[i];
     }
     blocks[size] = 0x80;
-    blocks[nb_blocks * BLOCK_SIZE - 1] = 8 * (size >> (0 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 2] = 8 * (size >> (1 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 3] = 8 * (size >> (2 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 4] = 8 * (size >> (3 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 5] = 8 * (size >> (4 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 6] = 8 * (size >> (5 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 7] = 8 * (size >> (6 * 8));
-    blocks[nb_blocks * BLOCK_SIZE - 8] = 8 * (size >> (7 * 8));
+    for (int i = 0; i < 8; i++) {
+        blocks[nb_blocks * BLOCK_SIZE - i - 1] = 8 * (size >> (i * 8));
+    }
 
     u_int32_t *hash = malloc(8 * sizeof(u_int32_t));
     if (hash == NULL) {
@@ -86,7 +81,7 @@ u_int32_t *sha256_hash(u_int64_t size, u_int8_t *input) {
 
     for (u_int64_t i = 0; i < nb_blocks; i++) {
         for (u_int8_t j = 0; j < 16; j++) {
-            u_int64_t offset = i * 64 + 4 * j;
+            u_int64_t offset = i * BLOCK_SIZE + 4 * j;
             w[j] = blocks[offset] << 24 | blocks[offset + 1] << 16 | blocks[offset + 2] << 8 |
                    blocks[offset + 3] << 0;
         }
