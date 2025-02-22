@@ -6,7 +6,7 @@
 #define SCHEDULE_SIZE 64
 
 #ifdef DEBUG
-void print_block(u_int8_t block[BLOCK_SIZE]) {
+void print_block(const u_int8_t block[BLOCK_SIZE]) {
     for (u_int8_t i = 0; i < BLOCK_SIZE; i += 4) {
         printf("%02x-%02x: %08b %08b %08b %08b\n", i, i + 3, block[i], block[i + 1], block[i + 2],
                block[i + 3]);
@@ -15,7 +15,7 @@ void print_block(u_int8_t block[BLOCK_SIZE]) {
 #endif
 
 #ifdef DEBUG
-void print_32_int_array(u_int8_t size, u_int32_t arr[size]) {
+void print_32_int_array(u_int8_t size, const u_int32_t arr[size]) {
     for (u_int8_t i = 0; i < size; i++) {
         printf("%3d: %032b\n", i, arr[i]);
     }
@@ -27,44 +27,6 @@ u_int32_t ror(u_int32_t x, u_int32_t n) {
 }
 
 int main(int argc, char *argv[]) {
-    u_int8_t block[64] = {0};
-    block[0] = 0b10100101;
-    block[1] = 0b01011010;
-    block[2] = 0b00001010;
-    block[3] = 0b10000000;
-    block[63] = 24;
-
-    u_int32_t w[SCHEDULE_SIZE] = {0};
-    for (u_int8_t i = 0; i < 16; i++) {
-        w[i] = block[4 * i] << 24 | block[4 * i + 1] << 16 | block[4 * i + 2] << 8 |
-               block[4 * i + 3] << 0;
-    }
-
-#ifdef DEBUG
-    print_block(block);
-    print_32_int_array(SCHEDULE_SIZE, w);
-#endif
-
-    for (int i = 16; i < SCHEDULE_SIZE; i++) {
-        u_int8_t i0 = i - 15;
-        u_int8_t i1 = i - 2;
-        u_int32_t s0 = ror(w[i0], 7) ^ ror(w[i0], 18) ^ (w[i0] >> 3);
-        u_int32_t s1 = ror(w[i1], 17) ^ ror(w[i1], 19) ^ (w[i1] >> 10);
-        w[i] = w[i - 16] + s0 + w[i - 7] + s1;
-    }
-
-#ifdef DEBUG
-    print_32_int_array(SCHEDULE_SIZE, w);
-#endif
-
-    // first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
-    const u_int32_t hash_values[8] = {
-        0b01101010000010011110011001100111, 0b10111011011001111010111010000101,
-        0b00111100011011101111001101110010, 0b10100101010011111111010100111010,
-        0b01010001000011100101001001111111, 0b10011011000001010110100010001100,
-        0b00011111100000111101100110101011, 0b01011011111000001100110100011001,
-    };
-
     // first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
     const u_int32_t k[64] = {
         0b01000010100010100010111110011000, 0b01110001001101110100010010010001,
@@ -101,36 +63,84 @@ int main(int argc, char *argv[]) {
         0b10111110111110011010001111110111, 0b11000110011100010111100011110010,
     };
 
-    u_int32_t a = hash_values[0], b = hash_values[1], c = hash_values[2], d = hash_values[3],
-              e = hash_values[4], f = hash_values[5], g = hash_values[6], h = hash_values[7];
+    // first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
+    u_int32_t h0 = 0b01101010000010011110011001100111;
+    u_int32_t h1 = 0b10111011011001111010111010000101;
+    u_int32_t h2 = 0b00111100011011101111001101110010;
+    u_int32_t h3 = 0b10100101010011111111010100111010;
+    u_int32_t h4 = 0b01010001000011100101001001111111;
+    u_int32_t h5 = 0b10011011000001010110100010001100;
+    u_int32_t h6 = 0b00011111100000111101100110101011;
+    u_int32_t h7 = 0b01011011111000001100110100011001;
 
-    for (int i = 1; i < 65; i++) {
-        u_int32_t s1 = ror(e, 6) ^ ror(e, 11) ^ ror(e, 25);
-        u_int32_t choice = (e & f) ^ (~e & g);
-        u_int32_t s0 = ror(a, 2) ^ ror(a, 13) ^ ror(a, 22);
-        u_int32_t majority = (a & b) ^ (a & c) ^ (b & c);
-
-        u_int32_t tmp_1 = h + s1 + choice + k[i - 1] + w[i - 1];
-        u_int32_t tmp_2 = s0 + majority;
-
-        h = g;
-        g = f;
-        f = e;
-        e = d + tmp_1;
-        d = c;
-        c = b;
-        b = a;
-        a = tmp_1 + tmp_2;
+    const int NB_BLOCKS = 1;
+    u_int8_t blocks[NB_BLOCKS][BLOCK_SIZE];
+    for (u_int8_t i = 0; i < NB_BLOCKS; i++) {
+        for (u_int8_t j = 0; j < BLOCK_SIZE; j++) {
+            blocks[i][j] = 0;
+        }
     }
 
-    u_int32_t h0 = hash_values[0] + a;
-    u_int32_t h1 = hash_values[1] + b;
-    u_int32_t h2 = hash_values[2] + c;
-    u_int32_t h3 = hash_values[3] + d;
-    u_int32_t h4 = hash_values[4] + e;
-    u_int32_t h5 = hash_values[5] + f;
-    u_int32_t h6 = hash_values[6] + g;
-    u_int32_t h7 = hash_values[7] + h;
+    blocks[0][0] = 0b10100101;
+    blocks[0][1] = 0b01011010;
+    blocks[0][2] = 0b00001010;
+    blocks[0][3] = 0b10000000;
+    blocks[0][63] = 24;
+
+    u_int32_t w[SCHEDULE_SIZE] = {0};
+    u_int32_t a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+
+    for (int i = 0; i < NB_BLOCKS; i++) {
+        for (u_int8_t j = 0; j < 16; j++) {
+            w[j] = blocks[i][4 * j] << 24 | blocks[i][4 * j + 1] << 16 | blocks[i][4 * j + 2] << 8 |
+                   blocks[i][4 * j + 3] << 0;
+        }
+
+#ifdef DEBUG
+        print_block(blocks[0]);
+        print_32_int_array(SCHEDULE_SIZE, w);
+#endif
+
+        for (u_int8_t j = 16; j < SCHEDULE_SIZE; j++) {
+            u_int8_t i0 = j - 15;
+            u_int8_t i1 = j - 2;
+            u_int32_t s0 = ror(w[i0], 7) ^ ror(w[i0], 18) ^ (w[i0] >> 3);
+            u_int32_t s1 = ror(w[i1], 17) ^ ror(w[i1], 19) ^ (w[i1] >> 10);
+            w[j] = w[j - 16] + s0 + w[j - 7] + s1;
+        }
+
+#ifdef DEBUG
+        print_32_int_array(SCHEDULE_SIZE, w);
+#endif
+
+        for (int j = 1; j < 65; j++) {
+            u_int32_t s1 = ror(e, 6) ^ ror(e, 11) ^ ror(e, 25);
+            u_int32_t choice = (e & f) ^ (~e & g);
+            u_int32_t s0 = ror(a, 2) ^ ror(a, 13) ^ ror(a, 22);
+            u_int32_t majority = (a & b) ^ (a & c) ^ (b & c);
+
+            u_int32_t tmp_1 = h + s1 + choice + k[j - 1] + w[j - 1];
+            u_int32_t tmp_2 = s0 + majority;
+
+            h = g;
+            g = f;
+            f = e;
+            e = d + tmp_1;
+            d = c;
+            c = b;
+            b = a;
+            a = tmp_1 + tmp_2;
+        }
+
+        h0 = h0 + a;
+        h1 = h1 + b;
+        h2 = h2 + c;
+        h3 = h3 + d;
+        h4 = h4 + e;
+        h5 = h5 + f;
+        h6 = h6 + g;
+        h7 = h7 + h;
+    }
 
     printf("%2x%2x%2x%2x%2x%2x%2x%2x\n", h0, h1, h2, h3, h4, h5, h6, h7);
 
