@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     u_int32_t h6 = 0b00011111100000111101100110101011;
     u_int32_t h7 = 0b01011011111000001100110100011001;
 
-    const int NB_BLOCKS = 1;
+    const int NB_BLOCKS = 2;
     u_int8_t blocks[NB_BLOCKS][BLOCK_SIZE];
     for (u_int8_t i = 0; i < NB_BLOCKS; i++) {
         for (u_int8_t j = 0; j < BLOCK_SIZE; j++) {
@@ -84,11 +84,13 @@ int main(int argc, char *argv[]) {
     blocks[0][0] = 0b10100101;
     blocks[0][1] = 0b01011010;
     blocks[0][2] = 0b00001010;
-    blocks[0][3] = 0b10000000;
-    blocks[0][63] = 24;
+    blocks[0][55] = 0b00000001;
+    blocks[0][56] = 0b10000000;
+
+    blocks[1][62] = 0b00000001;
+    blocks[1][63] = 0b11000000;
 
     u_int32_t w[SCHEDULE_SIZE] = {0};
-    u_int32_t a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
 
     for (int i = 0; i < NB_BLOCKS; i++) {
         for (u_int8_t j = 0; j < 16; j++) {
@@ -97,7 +99,6 @@ int main(int argc, char *argv[]) {
         }
 
 #ifdef DEBUG
-        print_block(blocks[0]);
         print_32_int_array(SCHEDULE_SIZE, w);
 #endif
 
@@ -112,6 +113,8 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUG
         print_32_int_array(SCHEDULE_SIZE, w);
 #endif
+
+        u_int32_t a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
 
         for (int j = 1; j < 65; j++) {
             u_int32_t s1 = ror(e, 6) ^ ror(e, 11) ^ ror(e, 25);
@@ -142,7 +145,7 @@ int main(int argc, char *argv[]) {
         h7 = h7 + h;
     }
 
-    printf("%2x%2x%2x%2x%2x%2x%2x%2x\n", h0, h1, h2, h3, h4, h5, h6, h7);
+    printf("%08x%08x%08x%08x%08x%08x%08x%08x\n", h0, h1, h2, h3, h4, h5, h6, h7);
 
     return EXIT_SUCCESS;
 }
