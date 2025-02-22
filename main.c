@@ -7,8 +7,8 @@
 
 void print_block(u_int8_t block[BLOCK_SIZE]) {
     for (u_int8_t i = 0; i < BLOCK_SIZE; i += 4) {
-        printf("%02x-%02x: %08b %08b %08b %08b\n", i, i + 3, block[i],
-               block[i + 1], block[i + 2], block[i + 3]);
+        printf("%02x-%02x: %08b %08b %08b %08b\n", i, i + 3, block[i], block[i + 1], block[i + 2],
+               block[i + 3]);
     }
 }
 
@@ -19,12 +19,6 @@ void print_schedule(u_int32_t schedule[SCHEDULE_SIZE]) {
 }
 
 u_int32_t ror(u_int32_t x, u_int32_t n) {
-
-    // if n=4, x=0x12345678:
-    // shifted = 0x12345678 >> 4 = 0x01234567
-    // rot_bits = (0x12345678 << 28) = 0x80000000
-    // combined = 0x80000000 | 0x01234567 = 0x81234567
-
     return (x >> n) | (x << (32 - n));
 }
 
@@ -38,8 +32,8 @@ int main(int argc, char *argv[]) {
 
     u_int32_t w[SCHEDULE_SIZE] = {0};
     for (u_int8_t i = 0; i < 16; i++) {
-        w[i] = block[4 * i] << 24 | block[4 * i + 1] << 16 |
-               block[4 * i + 2] << 8 | block[4 * i + 3] << 0;
+        w[i] = block[4 * i] << 24 | block[4 * i + 1] << 16 | block[4 * i + 2] << 8 |
+               block[4 * i + 3] << 0;
     }
 
     print_block(block);
