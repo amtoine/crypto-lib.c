@@ -16,5 +16,7 @@ int main(int argc, char *argv[]) {
     printf("%08x%08x%08x%08x%08x%08x%08x%08x\n", hash[0], hash[1], hash[2], hash[3], hash[4],
            hash[5], hash[6], hash[7]);
 
+    free(hash);
+
     return EXIT_SUCCESS;
 }
