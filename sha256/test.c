@@ -65,6 +65,8 @@ int main() {
                 printf("%08x", tests[i].expected[h]);
             }
         }
+
+        free(actual);
     }
 
     if (ok) {
